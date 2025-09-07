@@ -12,27 +12,57 @@
         <div class="header">
             <div class="room-info">
                 <h2>Chad Meeting</h2>
-                <span class="participants-count">— 1 участник</span>
+                <span class="participants-count" id="participants-count">— 1 участник</span>
                 <span id="room-id">{{ room_id }}</span>
             </div>
-            <button id="copy-link">Скопировать</button>
+            <div class="user-profile">
+                <span id="user-avatar" class="user-avatar">😊</span>
+                <span id="user-name" class="user-name">Вы</span>
+                <div class="user-status">
+                    <span class="status-indicator" id="user-status-indicator"></span>
+                    <span id="user-status-text">В сети</span>
+                </div>
+                <button id="copy-link">Скопировать</button>
+            </div>
+        </div>
+
+        <!-- Уведомление о разрешениях -->
+        <div id="permissions-banner" class="permissions-banner" style="display: none;">
+            <div class="banner-content">
+                <span class="banner-icon">🎤</span>
+                <span class="banner-text">Разрешите доступ к микрофону для детекции речи</span>
+                <button id="request-permissions" class="banner-btn">Разрешить</button>
+                <button id="dismiss-banner" class="banner-dismiss">✕</button>
+            </div>
         </div>
 
         <!-- Основная область -->
         <div class="main-content">
             <!-- Видео область -->
             <div class="video-area">
-                <div id="video-grid" class="video-grid">
-                    <!-- Заглушка когда нет видео -->
-                    <div class="video-container" id="placeholder">
-                        <div class="video-placeholder">Вы</div>
-                    </div>
+                <div id="video-grid" class="video-grid mode-equal participants-1">
+                    <!-- Динамические плитки участников будут добавляться здесь -->
+                </div>
+                
+                <!-- Оверлей для реакций -->
+                <div class="reactions-overlay" id="reactions-overlay"></div>
+                
+                <!-- Панель быстрых реакций -->
+                <div class="quick-reactions" id="quick-reactions">
+                    <button class="reaction-btn" onclick="sendReaction('👍')">👍</button>
+                    <button class="reaction-btn" onclick="sendReaction('❤️')">❤️</button>
+                    <button class="reaction-btn" onclick="sendReaction('😂')">😂</button>
+                    <button class="reaction-btn" onclick="sendReaction('😮')">😮</button>
+                    <button class="reaction-btn" onclick="sendReaction('👏')">👏</button>
+                    <button class="reaction-btn" onclick="sendReaction('🔥')">🔥</button>
                 </div>
             </div>
 
             <!-- Чат -->
             <div class="chat-container">
-                <div class="chat-header">Сообщения</div>
+                <div class="chat-header">
+                    Сообщения
+                </div>
                 <div id="chat" class="chat"></div>
                 <div class="chat-input">
                     <input type="text" id="message-input" placeholder="Отправить сообщение" onkeypress="if(event.key==='Enter') document.getElementById('send-message').click();">
@@ -43,10 +73,11 @@
 
         <!-- Нижняя панель управления -->
         <div class="controls">
-            <button id="toggle-mic" class="control-btn mic" title="Микрофон">🎤</button>
+            <button id="toggle-mic" class="control-btn mic active" title="Микрофон">🎤</button>
             <button id="toggle-camera" class="control-btn camera" title="Камера">📹</button>
             <button id="toggle-screen" class="control-btn screen" title="Демонстрация экрана">🖥</button>
-            <button id="toggle-audio" class="control-btn audio" title="Звук">🔊</button>
+            <button id="toggle-reactions" class="control-btn reactions" title="Реакции">😊</button>
+            <button id="toggle-audio" class="control-btn audio active" title="Звук">🔊</button>
         </div>
     </div>
 
@@ -64,43 +95,997 @@
     <script>
         const ROOM_ID = "{{ room_id }}";
         
-        // Новые кнопки управления
+        // Получаем профиль пользователя из localStorage
+        let userProfile = JSON.parse(localStorage.getItem('userProfile')) || {
+            name: 'Гость',
+            avatar: '😊'
+        };
+        
+        // Подключение к сокету
+        const socket = io();
+        
+        // Состояние
+        let reactionsVisible = false;
+        let isSpeaking = false;
+        let micStream = null;
+        let audioContext = null;
+        let analyser = null;
+        let speechDetectionEnabled = false;
+        
+        // Управление кнопками
         let micEnabled = true;
         let cameraEnabled = false;
         let screenEnabled = false;
         let audioEnabled = true;
+        
+        // WebRTC конфигурация
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
 
-        // Привязка к старым кнопкам для совместимости
-        document.getElementById('toggle-mic').addEventListener('click', () => {
-            if (micEnabled) {
-                document.getElementById('mute-mic').click();
+        // Глобальные переменные для медиа
+        let localStream = null;
+        let localVideoTrack = null;
+        let localAudioTrack = null;
+        let screenStream = null;
+        let peerConnections = {};
+        
+        // Участники
+        let participants = [];
+        let presentingParticipant = null; // Кто делает презентацию
+        
+        // Получение локального видео элемента для текущего пользователя
+        function getLocalVideoElement() {
+            const container = document.getElementById(`participant-${userProfile.name}`);
+            if (!container) return null;
+            
+            let video = container.querySelector('video');
+            if (!video) {
+                video = document.createElement('video');
+                video.autoplay = true;
+                video.muted = true; // Заглушаем собственное видео
+                video.playsInline = true;
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.objectFit = 'cover';
+                
+                // Скрываем placeholder и показываем видео
+                const placeholder = container.querySelector('.video-placeholder');
+                if (placeholder) {
+                    placeholder.style.display = 'none';
+                }
+                container.appendChild(video);
+            }
+            return video;
+        }
+
+        // Получение элемента видео для удаленного участника
+        function getRemoteVideoElement(participantName) {
+            const container = document.getElementById(`participant-${participantName}`);
+            if (!container) return null;
+            
+            let video = container.querySelector('video');
+            if (!video) {
+                video = document.createElement('video');
+                video.autoplay = true;
+                video.playsInline = true;
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.objectFit = 'cover';
+                
+                // Скрываем placeholder и показываем видео
+                const placeholder = container.querySelector('.video-placeholder');
+                if (placeholder) {
+                    placeholder.style.display = 'none';
+                }
+                container.appendChild(video);
+            }
+            return video;
+        }
+
+        // Показать placeholder вместо видео
+        function showPlaceholder(participantName) {
+            const container = document.getElementById(`participant-${participantName}`);
+            if (!container) return;
+            
+            const video = container.querySelector('video');
+            const placeholder = container.querySelector('.video-placeholder');
+            
+            if (video) {
+                video.style.display = 'none';
+            }
+            if (placeholder) {
+                placeholder.style.display = 'flex';
+            }
+        }
+
+        // Скрыть placeholder и показать видео
+        function hidePlaceholder(participantName) {
+            const container = document.getElementById(`participant-${participantName}`);
+            if (!container) return;
+            
+            const video = container.querySelector('video');
+            const placeholder = container.querySelector('.video-placeholder');
+            
+            if (placeholder) {
+                placeholder.style.display = 'none';
+            }
+            if (video) {
+                video.style.display = 'block';
+            }
+        }
+
+        // Запуск камеры
+        async function startCamera() {
+            try {
+                console.log('Запуск камеры...');
+                showSystemMessage('📹 Включаем камеру...');
+                
+                // Если уже есть стрим с аудио, добавляем видео
+                if (localStream && localStream.getAudioTracks().length > 0) {
+                    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    const videoTrack = videoStream.getVideoTracks()[0];
+                    
+                    localStream.addTrack(videoTrack);
+                    localVideoTrack = videoTrack;
+                } else {
+                    // Создаем новый стрим с видео и аудио
+                    localStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: true, 
+                        audio: true 
+                    });
+                    localVideoTrack = localStream.getVideoTracks()[0];
+                    localAudioTrack = localStream.getAudioTracks()[0];
+                    
+                    // Настраиваем детекцию речи с новым аудио
+                    if (!speechDetectionEnabled && localAudioTrack) {
+                        setupSpeechDetection(localStream);
+                    }
+                }
+                
+                // Отображаем видео локально
+                const localVideo = getLocalVideoElement();
+                if (localVideo) {
+                    localVideo.srcObject = localStream;
+                    hidePlaceholder(userProfile.name);
+                }
+                
+                // Обновляем все существующие peer connections
+                for (const peerId in peerConnections) {
+                    const pc = peerConnections[peerId];
+                    if (localVideoTrack) {
+                        pc.addTrack(localVideoTrack, localStream);
+                    }
+                }
+                
+                console.log('Камера запущена успешно');
+                showSystemMessage('✅ Камера включена');
+                return true;
+                
+            } catch (error) {
+                console.error('Ошибка запуска камеры:', error);
+                
+                let errorMessage = '❌ Ошибка доступа к камере';
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = '🚫 Доступ к камере запрещён';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = '📹 Камера не найдена';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage = '⚠️ Браузер не поддерживает доступ к камере';
+                }
+                
+                showSystemMessage(errorMessage);
+                return false;
+            }
+        }
+
+        // Остановка камеры
+        function stopCamera() {
+            try {
+                console.log('Остановка камеры...');
+                
+                if (localVideoTrack) {
+                    localVideoTrack.stop();
+                    
+                    // Удаляем трек из стрима
+                    if (localStream) {
+                        localStream.removeTrack(localVideoTrack);
+                    }
+                    
+                    // Удаляем трек из всех peer connections
+                    for (const peerId in peerConnections) {
+                        const pc = peerConnections[peerId];
+                        const senders = pc.getSenders();
+                        const videoSender = senders.find(sender => 
+                            sender.track && sender.track.kind === 'video'
+                        );
+                        if (videoSender) {
+                            pc.removeTrack(videoSender);
+                        }
+                    }
+                    
+                    localVideoTrack = null;
+                }
+                
+                // Показываем placeholder
+                showPlaceholder(userProfile.name);
+                
+                console.log('Камера остановлена');
+                showSystemMessage('📹 Камера выключена');
+                
+            } catch (error) {
+                console.error('Ошибка остановки камеры:', error);
+                showSystemMessage('❌ Ошибка выключения камеры');
+            }
+        }
+
+        // Запуск демонстрации экрана
+        async function startScreenShare() {
+            try {
+                console.log('Запуск демонстрации экрана...');
+                showSystemMessage('🖥 Запускаем демонстрацию экрана...');
+                
+                screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: true
+                });
+                
+                const screenTrack = screenStream.getVideoTracks()[0];
+                
+                // Отображаем демонстрацию локально
+                const localVideo = getLocalVideoElement();
+                if (localVideo) {
+                    localVideo.srcObject = screenStream;
+                    hidePlaceholder(userProfile.name);
+                }
+                
+                // Заменяем видео трек в существующих connections
+                for (const peerId in peerConnections) {
+                    const pc = peerConnections[peerId];
+                    const senders = pc.getSenders();
+                    const videoSender = senders.find(sender => 
+                        sender.track && sender.track.kind === 'video'
+                    );
+                    
+                    if (videoSender) {
+                        await videoSender.replaceTrack(screenTrack);
+                    } else {
+                        pc.addTrack(screenTrack, screenStream);
+                    }
+                }
+                
+                // Слушаем окончание демонстрации (когда пользователь нажимает "Остановить")
+                screenTrack.onended = () => {
+                    console.log('Демонстрация экрана завершена пользователем');
+                    screenEnabled = false;
+                    updateButtonState('toggle-screen', false);
+                    stopScreenShare();
+                    updatePresentationStatus(userProfile.name, false);
+                    
+                    socket.emit('screen_status', {
+                        room: ROOM_ID,
+                        enabled: false,
+                        profile: userProfile
+                    });
+                };
+                
+                console.log('Демонстрация экрана запущена');
+                showSystemMessage('✅ Демонстрация экрана активна');
+                return true;
+                
+            } catch (error) {
+                console.error('Ошибка запуска демонстрации:', error);
+                
+                let errorMessage = '❌ Ошибка демонстрации экрана';
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = '🚫 Демонстрация экрана отменена';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage = '⚠️ Демонстрация экрана не поддерживается';
+                }
+                
+                showSystemMessage(errorMessage);
+                return false;
+            }
+        }
+
+        // Остановка демонстрации экрана
+        async function stopScreenShare() {
+            try {
+                console.log('Остановка демонстрации экрана...');
+                
+                if (screenStream) {
+                    screenStream.getTracks().forEach(track => track.stop());
+                    screenStream = null;
+                }
+                
+                // Возвращаемся к камере, если она была включена
+                if (cameraEnabled && localVideoTrack) {
+                    const localVideo = getLocalVideoElement();
+                    if (localVideo && localStream) {
+                        localVideo.srcObject = localStream;
+                    }
+                    
+                    // Заменяем трек демонстрации на камеру в connections
+                    for (const peerId in peerConnections) {
+                        const pc = peerConnections[peerId];
+                        const senders = pc.getSenders();
+                        const videoSender = senders.find(sender => 
+                            sender.track && sender.track.kind === 'video'
+                        );
+                        
+                        if (videoSender && localVideoTrack) {
+                            await videoSender.replaceTrack(localVideoTrack);
+                        }
+                    }
+                } else {
+                    // Если камера выключена, показываем placeholder
+                    showPlaceholder(userProfile.name);
+                }
+                
+                console.log('Демонстрация экрана остановлена');
+                showSystemMessage('🖥 Демонстрация экрана завершена');
+                
+            } catch (error) {
+                console.error('Ошибка остановки демонстрации:', error);
+                showSystemMessage('❌ Ошибка остановки демонстрации');
+            }
+        }
+
+        // Включение микрофона
+        async function startMicrophone() {
+            try {
+                console.log('Включение микрофона...');
+                
+                if (!localStream) {
+                    // Создаем новый стрим только с аудио
+                    localStream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: true,
+                        video: false 
+                    });
+                    localAudioTrack = localStream.getAudioTracks()[0];
+                    
+                    // Настраиваем детекцию речи
+                    if (!speechDetectionEnabled) {
+                        setupSpeechDetection(localStream);
+                    }
+                } else if (!localAudioTrack) {
+                    // Добавляем аудио к существующему стриму
+                    const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const audioTrack = audioStream.getAudioTracks()[0];
+                    
+                    localStream.addTrack(audioTrack);
+                    localAudioTrack = audioTrack;
+                    
+                    // Обновляем детекцию речи
+                    if (!speechDetectionEnabled) {
+                        setupSpeechDetection(localStream);
+                    }
+                } else {
+                    // Микрофон уже включен, просто размучиваем
+                    localAudioTrack.enabled = true;
+                }
+                
+                // Добавляем аудио трек во все connections
+                for (const peerId in peerConnections) {
+                    const pc = peerConnections[peerId];
+                    if (localAudioTrack) {
+                        const audioSender = pc.getSenders().find(sender => 
+                            sender.track && sender.track.kind === 'audio'
+                        );
+                        if (!audioSender) {
+                            pc.addTrack(localAudioTrack, localStream);
+                        }
+                    }
+                }
+                
+                console.log('Микрофон включен');
+                showSystemMessage('🎤 Микрофон включен');
+                return true;
+                
+            } catch (error) {
+                console.error('Ошибка включения микрофона:', error);
+                
+                let errorMessage = '❌ Ошибка доступа к микрофону';
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = '🚫 Доступ к микрофону запрещён';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = '🎤 Микрофон не найден';
+                }
+                
+                showSystemMessage(errorMessage);
+                return false;
+            }
+        }
+
+        // Выключение микрофона
+        function stopMicrophone() {
+            try {
+                console.log('Выключение микрофона...');
+                
+                if (localAudioTrack) {
+                    localAudioTrack.enabled = false; // Мутим вместо полного отключения
+                }
+                
+                console.log('Микрофон выключен');
+                showSystemMessage('🎤 Микрофон выключен');
+                
+            } catch (error) {
+                console.error('Ошибка выключения микрофона:', error);
+                showSystemMessage('❌ Ошибка выключения микрофона');
+            }
+        }
+
+        // Создание peer connection
+        function createPeerConnection(peerId) {
+            const pc = new RTCPeerConnection(rtcConfig);
+            peerConnections[peerId] = pc;
+            
+            // Добавляем локальные треки, если они есть
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    pc.addTrack(track, localStream);
+                });
+            }
+            
+            // Обработка входящих треков
+            pc.ontrack = (event) => {
+                console.log('Получен удаленный трек:', event.track.kind);
+                const remoteStream = event.streams[0];
+                
+                // Находим участника по ID и отображаем его видео
+                // Здесь нужна логика сопоставления peerId с именем участника
+                // Пока что просто логируем
+                console.log('Удаленный стрим от:', peerId, remoteStream);
+            };
+            
+            // ICE кандидаты
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('ice-candidate', {
+                        candidate: event.candidate,
+                        to: peerId,
+                        room: ROOM_ID
+                    });
+                }
+            };
+            
+            return pc;
+        }
+        
+        // Обновляем UI с профилем пользователя
+        function updateUserProfile() {
+            document.getElementById('user-name').textContent = userProfile.name;
+            document.getElementById('user-avatar').textContent = userProfile.avatar;
+        }
+        
+        // Обновление счетчика участников
+        function updateParticipantsCount(count) {
+            const countElement = document.getElementById('participants-count');
+            const word = count === 1 ? 'участник' : count < 5 ? 'участника' : 'участников';
+            countElement.textContent = `— ${count} ${word}`;
+        }
+        
+        // Добавление участника в сетку
+        function addParticipantToGrid(participant) {
+            const videoGrid = document.getElementById('video-grid');
+            const participantContainer = document.createElement('div');
+            participantContainer.className = 'video-container';
+            participantContainer.id = `participant-${participant.name}`;
+            
+            participantContainer.innerHTML = `
+                <div class="video-placeholder">
+                    <span class="placeholder-avatar">${participant.avatar}</span>
+                    <span class="placeholder-name">${participant.name}</span>
+                </div>
+                <div class="video-status">
+                    <div class="status-badge camera-off">📹 Камера выкл.</div>
+                </div>
+                <div class="participant-info">
+                    <div class="participant-name-info">
+                        <span class="participant-avatar-small">${participant.avatar}</span>
+                        <span class="participant-name-text">${participant.name}</span>
+                    </div>
+                    <div class="participant-status-indicators">
+                        <span class="status-icon" id="mic-${participant.name}">🎤</span>
+                        <span class="status-icon" id="cam-${participant.name}">📹</span>
+                    </div>
+                </div>
+            `;
+            
+            videoGrid.appendChild(participantContainer);
+            updateGridLayout();
+        }
+        
+        // Удаление участника из сетки
+        function removeParticipantFromGrid(participantName) {
+            const participantContainer = document.getElementById(`participant-${participantName}`);
+            if (participantContainer) {
+                participantContainer.remove();
+            }
+            updateGridLayout();
+        }
+        
+        // Обновление раскладки сетки
+        function updateGridLayout() {
+            const videoGrid = document.getElementById('video-grid');
+            const participantCount = participants.length;
+            
+            // Удаляем все классы участников и режимов
+            videoGrid.className = 'video-grid';
+            
+            if (presentingParticipant) {
+                // Режим презентации
+                videoGrid.classList.add('mode-presentation');
+                
+                // Перестраиваем сетку для режима презентации
+                const containers = videoGrid.querySelectorAll('.video-container');
+                containers.forEach(container => {
+                    container.classList.remove('main-presenter', 'sidebar-participant');
+                });
+                
+                // Презентующий участник становится главным
+                const presenterContainer = document.getElementById(`participant-${presentingParticipant.name}`);
+                if (presenterContainer) {
+                    presenterContainer.classList.add('main-presenter');
+                    
+                    // Обновляем статус-бейдж для презентации
+                    const statusContainer = presenterContainer.querySelector('.video-status');
+                    if (!statusContainer.querySelector('.status-badge.presenting')) {
+                        const presentingBadge = document.createElement('div');
+                        presentingBadge.className = 'status-badge presenting';
+                        presentingBadge.textContent = '🖥 Демонстрация экрана';
+                        statusContainer.appendChild(presentingBadge);
+                    }
+                }
+                
+                // Остальные участники в боковую панель
+                containers.forEach(container => {
+                    if (!container.classList.contains('main-presenter')) {
+                        container.classList.add('sidebar-participant');
+                    }
+                });
+                
+                // Создаем контейнер для боковых участников
+                if (!videoGrid.querySelector('.sidebar-participants')) {
+                    const sidebarContainer = document.createElement('div');
+                    sidebarContainer.className = 'sidebar-participants';
+                    
+                    containers.forEach(container => {
+                        if (container.classList.contains('sidebar-participant')) {
+                            sidebarContainer.appendChild(container);
+                        }
+                    });
+                    
+                    videoGrid.appendChild(sidebarContainer);
+                }
+                
             } else {
-                document.getElementById('unmute-mic').click();
+                // Обычный режим - равномерная сетка
+                videoGrid.classList.add('mode-equal');
+                videoGrid.classList.add(`participants-${participantCount}`);
+                
+                // Удаляем все специальные классы
+                const containers = videoGrid.querySelectorAll('.video-container');
+                containers.forEach(container => {
+                    container.classList.remove('main-presenter', 'sidebar-participant');
+                    
+                    // Удаляем бейдж презентации
+                    const presentingBadge = container.querySelector('.status-badge.presenting');
+                    if (presentingBadge) {
+                        presentingBadge.remove();
+                    }
+                });
+                
+                // Удаляем контейнер боковых участников
+                const sidebarContainer = videoGrid.querySelector('.sidebar-participants');
+                if (sidebarContainer) {
+                    // Возвращаем участников обратно в основную сетку
+                    const sidebarParticipants = sidebarContainer.querySelectorAll('.video-container');
+                    sidebarParticipants.forEach(container => {
+                        videoGrid.appendChild(container);
+                    });
+                    sidebarContainer.remove();
+                }
+            }
+            
+            console.log(`Обновлена сетка: ${participantCount} участников, презентация: ${presentingParticipant ? 'да' : 'нет'}`);
+        }
+        
+        // Обновление списка участников
+        function updateParticipantsList(participantProfiles) {
+            const videoGrid = document.getElementById('video-grid');
+            
+            // Находим новых участников
+            participantProfiles.forEach(profile => {
+                if (!participants.find(p => p.name === profile.name)) {
+                    participants.push({
+                        name: profile.name,
+                        avatar: profile.avatar,
+                        speaking: false,
+                        cameraEnabled: false,
+                        micEnabled: true
+                    });
+                    addParticipantToGrid(profile);
+                }
+            });
+            
+            // Находим покинувших участников
+            participants = participants.filter(participant => {
+                const stillHere = participantProfiles.find(p => p.name === participant.name);
+                if (!stillHere) {
+                    removeParticipantFromGrid(participant.name);
+                    // Если презентующий покинул комнату, выключаем режим презентации
+                    if (presentingParticipant && presentingParticipant.name === participant.name) {
+                        presentingParticipant = null;
+                        updateGridLayout();
+                    }
+                }
+                return stillHere;
+            });
+        }
+        
+        // Обновление статуса говорения участника
+        function updateParticipantSpeaking(profileName, speaking) {
+            const participant = participants.find(p => p.name === profileName);
+            if (participant) {
+                participant.speaking = speaking;
+                
+                const container = document.getElementById(`participant-${profileName}`);
+                const micIcon = document.getElementById(`mic-${profileName}`);
+                
+                if (container && micIcon) {
+                    if (speaking) {
+                        container.classList.add('speaking');
+                        micIcon.classList.add('speaking', 'active');
+                    } else {
+                        container.classList.remove('speaking');
+                        micIcon.classList.remove('speaking');
+                    }
+                }
+            }
+        }
+        
+        // Обновление статуса презентации
+        function updatePresentationStatus(profileName, isPresenting) {
+            if (isPresenting) {
+                const participant = participants.find(p => p.name === profileName);
+                if (participant) {
+                    presentingParticipant = participant;
+                    showSystemMessage(`🖥 ${participant.name} начал демонстрацию экрана`);
+                }
+            } else {
+                if (presentingParticipant && presentingParticipant.name === profileName) {
+                    showSystemMessage(`🖥 ${presentingParticipant.name} завершил демонстрацию экрана`);
+                    presentingParticipant = null;
+                }
+            }
+            updateGridLayout();
+        }
+        
+        // Проверка поддержки WebRTC
+        function checkWebRTCSupport() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.log('WebRTC не поддерживается в этом браузере');
+                showSystemMessage('⚠️ Ваш браузер не поддерживает детекцию речи');
+                return false;
+            }
+            return true;
+        }
+        
+        // Показать системное сообщение
+        function showSystemMessage(text) {
+            displayMessage({
+                msg: text,
+                author: 'Система',
+                avatar: '⚙️',
+                timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            });
+        }
+        
+        // Показать баннер с запросом разрешений
+        function showPermissionsBanner() {
+            const banner = document.getElementById('permissions-banner');
+            banner.style.display = 'block';
+            
+            setTimeout(() => {
+                if (banner.style.display !== 'none') {
+                    banner.style.display = 'none';
+                }
+            }, 10000);
+        }
+        
+        // Запрос разрешений на микрофон
+        async function requestMicrophonePermission() {
+            if (!checkWebRTCSupport()) return false;
+            
+            try {
+                console.log('Запрос доступа к микрофону...');
+                showSystemMessage('🎤 Запрашиваем доступ к микрофону...');
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: true,
+                    video: false 
+                });
+                
+                console.log('Доступ к микрофону получен');
+                showSystemMessage('✅ Доступ к микрофону разрешён');
+                setupSpeechDetection(stream);
+                document.getElementById('permissions-banner').style.display = 'none';
+                return true;
+                
+            } catch (error) {
+                console.error('Ошибка доступа к микрофону:', error);
+                
+                let errorMessage = '❌ Ошибка доступа к микрофону';
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = '🚫 Доступ к микрофону запрещён пользователем';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = '🎤 Микрофон не найден';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage = '⚠️ Браузер не поддерживает доступ к микрофону';
+                }
+                
+                showSystemMessage(errorMessage);
+                document.getElementById('permissions-banner').style.display = 'none';
+                return false;
+            }
+        }
+        
+        // Функция детекции речи
+        function setupSpeechDetection(stream) {
+            try {
+                micStream = stream;
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                const microphone = audioContext.createMediaStreamSource(stream);
+                microphone.connect(analyser);
+                analyser.fftSize = 512;
+                analyser.smoothingTimeConstant = 0.3;
+                
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                speechDetectionEnabled = true;
+                
+                console.log('Детекция речи инициализирована');
+                showSystemMessage('🎧 Детекция речи активирована');
+                
+                function detectSpeech() {
+                    if (!analyser || !speechDetectionEnabled) return;
+                    
+                    analyser.getByteFrequencyData(dataArray);
+                    
+                    let sum = 0;
+                    for (let i = 0; i < dataArray.length; i++) {
+                        sum += dataArray[i];
+                    }
+                    const average = sum / dataArray.length;
+                    
+                    const wasSpeaking = isSpeaking;
+                    isSpeaking = average > 25 && micEnabled;
+                    
+                    if (wasSpeaking !== isSpeaking) {
+                        updateSpeakingStatus(isSpeaking);
+                        updateParticipantSpeaking(userProfile.name, isSpeaking);
+                    }
+                    
+                    requestAnimationFrame(detectSpeech);
+                }
+                
+                detectSpeech();
+                
+            } catch (error) {
+                console.error('Ошибка настройки детекции речи:', error);
+                showSystemMessage('❌ Ошибка настройки детекции речи');
+            }
+        }
+        
+        // Обновление статуса говорения
+        function updateSpeakingStatus(speaking) {
+            const micBtn = document.getElementById('toggle-mic');
+            const statusIndicator = document.getElementById('user-status-indicator');
+            const statusText = document.getElementById('user-status-text');
+            
+            if (speaking && micEnabled) {
+                micBtn.classList.add('speaking');
+                statusIndicator.classList.add('speaking');
+                statusIndicator.classList.remove('muted', 'online');
+                statusText.textContent = 'Говорит';
+                
+                socket.emit('speaking_status', {
+                    room: ROOM_ID,
+                    speaking: true,
+                    profile: userProfile
+                });
+            } else {
+                micBtn.classList.remove('speaking');
+                statusIndicator.classList.remove('speaking');
+                
+                if (!micEnabled) {
+                    statusIndicator.classList.add('muted');
+                    statusIndicator.classList.remove('online');
+                    statusText.textContent = 'Микрофон выкл.';
+                } else {
+                    statusIndicator.classList.add('online');
+                    statusIndicator.classList.remove('muted');
+                    statusText.textContent = 'В сети';
+                }
+                
+                socket.emit('speaking_status', {
+                    room: ROOM_ID,
+                    speaking: false,
+                    profile: userProfile
+                });
+            }
+        }
+        
+        // Функция отправки сообщения
+        function sendMessage(text) {
+            const messageData = {
+                msg: text,
+                room: ROOM_ID,
+                author: userProfile.name,
+                avatar: userProfile.avatar,
+                timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            };
+            socket.emit('message', messageData);
+        }
+        
+        // Функция отправки реакции
+        function sendReaction(emoji) {
+            const reactionData = {
+                emoji: emoji,
+                room: ROOM_ID,
+                author: userProfile.name,
+                avatar: userProfile.avatar,
+                timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            };
+            socket.emit('reaction', reactionData);
+            toggleReactions();
+        }
+        
+        // Функция отображения реакции на экране
+        function showReactionAnimation(data) {
+            const overlay = document.getElementById('reactions-overlay');
+            const reactionElement = document.createElement('div');
+            reactionElement.className = 'reaction-emoji';
+            reactionElement.textContent = data.emoji;
+            
+            const randomX = Math.random() * 80 + 10;
+            const randomY = Math.random() * 60 + 20;
+            
+            reactionElement.style.left = randomX + '%';
+            reactionElement.style.top = randomY + '%';
+            
+            overlay.appendChild(reactionElement);
+            
+            setTimeout(() => {
+                if (reactionElement.parentNode) {
+                    reactionElement.parentNode.removeChild(reactionElement);
+                }
+            }, 3000);
+        }
+        
+        // Функция отображения сообщения
+        function displayMessage(data) {
+            const chat = document.getElementById('chat');
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message';
+            
+            messageElement.innerHTML = `
+                <div class="message-header">
+                    <span class="message-avatar">${data.avatar || '😊'}</span>
+                    <span class="message-author">${data.author || 'Гость'}</span>
+                    <span class="message-time">${data.timestamp || ''}</span>
+                </div>
+                <div class="message-text">${data.msg}</div>
+            `;
+            
+            chat.appendChild(messageElement);
+            chat.scrollTop = chat.scrollHeight;
+        }
+        
+        // Функция отображения уведомления о реакции
+        function displayReactionMessage(data) {
+            const chat = document.getElementById('chat');
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message reaction';
+            
+            messageElement.innerHTML = `
+                <div class="message-header">
+                    <span class="message-avatar">${data.avatar || '😊'}</span>
+                    <span class="message-author">${data.author || 'Гость'}</span>
+                    <span class="message-time">${data.timestamp || ''}</span>
+                </div>
+                <div class="message-text">Реакция: ${data.emoji}</div>
+            `;
+            
+            chat.appendChild(messageElement);
+            chat.scrollTop = chat.scrollHeight;
+        }
+        
+        // Переключение панели реакций
+        function toggleReactions() {
+            const reactionsPanel = document.getElementById('quick-reactions');
+            const reactionsBtn = document.getElementById('toggle-reactions');
+            
+            reactionsVisible = !reactionsVisible;
+            
+            if (reactionsVisible) {
+                reactionsPanel.classList.add('show');
+                reactionsBtn.classList.add('active');
+            } else {
+                reactionsPanel.classList.remove('show');
+                reactionsBtn.classList.remove('active');
+            }
+        }
+        
+        // Обработчики событий
+        document.getElementById('request-permissions').addEventListener('click', requestMicrophonePermission);
+        document.getElementById('dismiss-banner').addEventListener('click', () => {
+            document.getElementById('permissions-banner').style.display = 'none';
+        });
+        
+        // Управление кнопками с новыми функциями
+        document.getElementById('toggle-mic').addEventListener('click', async () => {
+            if (micEnabled) {
+                stopMicrophone();
+            } else {
+                const success = await startMicrophone();
+                if (!success) {
+                    return;
+                }
             }
             micEnabled = !micEnabled;
             updateButtonState('toggle-mic', micEnabled);
+            updateSpeakingStatus(false);
+            
+            socket.emit('mic_status', {
+                room: ROOM_ID,
+                enabled: micEnabled,
+                profile: userProfile
+            });
         });
 
-        document.getElementById('toggle-camera').addEventListener('click', () => {
+        document.getElementById('toggle-camera').addEventListener('click', async () => {
             if (cameraEnabled) {
-                document.getElementById('stop-video').click();
-                document.getElementById('placeholder').style.display = 'flex';
+                stopCamera();
             } else {
-                document.getElementById('start-video').click();
-                document.getElementById('placeholder').style.display = 'none';
+                const success = await startCamera();
+                if (!success) {
+                    return;
+                }
             }
             cameraEnabled = !cameraEnabled;
             updateButtonState('toggle-camera', cameraEnabled);
+            
+            socket.emit('camera_status', {
+                room: ROOM_ID,
+                enabled: cameraEnabled,
+                profile: userProfile
+            });
         });
 
-        document.getElementById('toggle-screen').addEventListener('click', () => {
+        document.getElementById('toggle-screen').addEventListener('click', async () => {
             if (screenEnabled) {
-                document.getElementById('stop-screen').click();
+                await stopScreenShare();
+                updatePresentationStatus(userProfile.name, false);
             } else {
-                document.getElementById('share-screen').click();
+                const success = await startScreenShare();
+                if (!success) {
+                    return;
+                }
+                updatePresentationStatus(userProfile.name, true);
             }
             screenEnabled = !screenEnabled;
             updateButtonState('toggle-screen', screenEnabled);
+            
+            socket.emit('screen_status', {
+                room: ROOM_ID,
+                enabled: screenEnabled,
+                profile: userProfile
+            });
         });
 
         document.getElementById('toggle-audio').addEventListener('click', () => {
@@ -112,6 +1097,8 @@
             audioEnabled = !audioEnabled;
             updateButtonState('toggle-audio', audioEnabled);
         });
+
+        document.getElementById('toggle-reactions').addEventListener('click', toggleReactions);
 
         function updateButtonState(buttonId, isActive) {
             const btn = document.getElementById(buttonId);
@@ -126,6 +1113,16 @@
             }
         }
 
+        // Отправка сообщения
+        document.getElementById('send-message').addEventListener('click', () => {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            if (message) {
+                sendMessage(message);
+                input.value = '';
+            }
+        });
+
         // Копирование ссылки
         document.getElementById('copy-link').addEventListener('click', () => {
             const link = window.location.href;
@@ -137,7 +1134,99 @@
             });
         });
 
-        console.log(`Подключение к комнате: ${ROOM_ID}`);
+        // Закрытие панели реакций при клике вне её
+        document.addEventListener('click', (e) => {
+            const reactionsPanel = document.getElementById('quick-reactions');
+            const reactionsBtn = document.getElementById('toggle-reactions');
+            
+            if (reactionsVisible && !reactionsPanel.contains(e.target) && e.target !== reactionsBtn) {
+                toggleReactions();
+            }
+        });
+
+        // Обработчики сокетов
+        socket.on('connect', () => {
+            console.log('Подключен к сокету');
+            socket.emit('join', {
+                room: ROOM_ID,
+                profile: userProfile
+            });
+        });
+        
+        socket.on('message', (data) => {
+            displayMessage(data);
+        });
+        
+        socket.on('reaction', (data) => {
+            showReactionAnimation(data);
+            displayReactionMessage(data);
+        });
+        
+        socket.on('speaking_status', (data) => {
+            updateParticipantSpeaking(data.profile.name, data.speaking);
+        });
+        
+        socket.on('camera_status', (data) => {
+            console.log('Статус камеры изменён:', data);
+            // Здесь можно добавить обновление UI для статуса камеры участника
+        });
+        
+        socket.on('screen_status', (data) => {
+            console.log('Статус демонстрации изменён:', data);
+            updatePresentationStatus(data.profile.name, data.enabled);
+        });
+        
+        socket.on('mic_status', (data) => {
+            console.log('Статус микрофона изменён:', data);
+            // Здесь можно добавить обновление UI для статуса микрофона участника
+        });
+        
+        socket.on('user_joined', (data) => {
+            updateParticipantsCount(data.participants_count);
+            displayMessage({
+                msg: `${data.profile.name} присоединился к встрече`,
+                author: 'Система',
+                avatar: '🔔',
+                timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            });
+        });
+        
+        socket.on('user_left', (data) => {
+            updateParticipantsCount(data.participants_count);
+            displayMessage({
+                msg: `${data.profile.name} покинул встречу`,
+                author: 'Система',
+                avatar: '👋',
+                timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            });
+        });
+        
+        socket.on('participants_update', (data) => {
+            updateParticipantsCount(data.count);
+            updateParticipantsList(data.participants);
+        });
+        
+        // Инициализация
+        updateUserProfile();
+        
+        // Добавляем себя как первого участника
+        participants.push({
+            name: userProfile.name,
+            avatar: userProfile.avatar,
+            speaking: false,
+            cameraEnabled: false,
+            micEnabled: true
+        });
+        addParticipantToGrid(userProfile);
+        
+        // Показываем баннер с запросом разрешений через 2 секунды
+        setTimeout(() => {
+            if (checkWebRTCSupport()) {
+                showPermissionsBanner();
+            }
+        }, 2000);
+
+        console.log(`Подключение к комнате: ${ROOM_ID} как ${userProfile.name} ${userProfile.avatar}`);
     </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>

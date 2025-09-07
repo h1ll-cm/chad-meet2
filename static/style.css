@@ -59,6 +59,55 @@ body {
     margin-left: 8px;
 }
 
+/* Профиль пользователя в хедере */
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar {
+    font-size: 20px;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.user-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4CAF50;
+    transition: all 0.3s ease;
+}
+
+.status-indicator.speaking {
+    background: #4CAF50;
+    animation: pulse 1s infinite;
+}
+
+.status-indicator.muted {
+    background: #ff3b30;
+}
+
+.status-indicator.online {
+    background: #4CAF50;
+}
+
+#user-status-text {
+    font-size: 12px;
+    color: #8e8e93;
+}
+
 #copy-link {
     background: transparent;
     border: 1px solid #606060;
@@ -74,6 +123,84 @@ body {
 #copy-link:hover {
     background: #404040;
     border-color: #8e8e93;
+}
+
+/* Баннер запроса разрешений */
+.permissions-banner {
+    background: rgba(0, 132, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0, 132, 255, 0.2);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: slideDown 0.3s ease;
+}
+
+.banner-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 600px;
+    width: 100%;
+}
+
+.banner-icon {
+    font-size: 18px;
+}
+
+.banner-text {
+    flex: 1;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.banner-btn {
+    background: #ffffff;
+    color: #0084ff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.banner-btn:hover {
+    background: #f0f0f0;
+    transform: translateY(-1px);
+}
+
+.banner-dismiss {
+    background: transparent;
+    color: #ffffff;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+
+.banner-dismiss:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 /* Основная область */
@@ -94,16 +221,38 @@ body {
     position: relative;
 }
 
+/* Динамическая видео-сетка */
 .video-grid {
     display: grid;
     gap: 8px;
     width: 100%;
     height: 100%;
     padding: 16px;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    grid-auto-rows: minmax(240px, 1fr);
+    transition: all 0.3s ease;
 }
 
+/* Режимы сетки */
+.video-grid.mode-equal {
+    grid-auto-rows: 1fr;
+}
+
+.video-grid.mode-presentation {
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr;
+}
+
+/* Автоматические сетки для равного режима */
+.video-grid.participants-1 { grid-template-columns: 1fr; }
+.video-grid.participants-2 { grid-template-columns: repeat(2, 1fr); }
+.video-grid.participants-3 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+.video-grid.participants-4 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+.video-grid.participants-5 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
+.video-grid.participants-6 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
+.video-grid.participants-7 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+.video-grid.participants-8 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+.video-grid.participants-9 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+
+/* Контейнеры видео */
 .video-container {
     background: #2d2d30;
     border-radius: 12px;
@@ -112,16 +261,50 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 200px;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
 }
 
-.video-grid video {
+.video-container.speaking {
+    border-color: #4CAF50;
+    animation: speakingGlow 2s infinite;
+}
+
+.video-container.main-presenter {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    min-height: unset;
+}
+
+.video-container.sidebar-participant {
+    min-height: 120px;
+}
+
+@keyframes speakingGlow {
+    0%, 100% { border-color: #4CAF50; box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
+    50% { border-color: #66BB6A; box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.2); }
+}
+
+/* Видео элементы */
+.video-container video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     background: #000000;
+    border-radius: 10px;
 }
 
+/* Плейсхолдеры участников */
 .video-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.placeholder-avatar {
+    font-size: 48px;
     width: 80px;
     height: 80px;
     background: #606060;
@@ -129,80 +312,199 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
-    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.video-container.sidebar-participant .placeholder-avatar {
+    font-size: 32px;
+    width: 60px;
+    height: 60px;
+}
+
+.placeholder-name {
+    font-size: 16px;
+    font-weight: 500;
     color: #ffffff;
+    text-align: center;
 }
 
-/* Нижняя панель управления */
-.controls {
-    background: #2d2d30;
-    border-top: 1px solid #404040;
-    padding: 16px 24px;
+.video-container.sidebar-participant .placeholder-name {
+    font-size: 14px;
+}
+
+/* Статус-бейджи на видео */
+.video-status {
+    position: absolute;
+    top: 12px;
+    left: 12px;
     display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-    min-height: 80px;
+    flex-direction: column;
+    gap: 6px;
 }
 
-.control-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
+.status-badge {
+    background: rgba(0, 0, 0, 0.7);
+    color: #ffffff;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    backdrop-filter: blur(4px);
+}
+
+.status-badge.camera-off {
+    background: rgba(255, 59, 48, 0.8);
+}
+
+.status-badge.mic-off {
+    background: rgba(255, 59, 48, 0.8);
+}
+
+/* Информация об участнике */
+.participant-info {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.participant-name-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.participant-avatar-small {
+    font-size: 16px;
+}
+
+.participant-name-text {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.participant-status-indicators {
+    display: flex;
+    gap: 4px;
+}
+
+.status-icon {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.status-icon.active {
+    opacity: 1;
+}
+
+.status-icon.speaking {
+    color: #4CAF50;
+    animation: pulse 1s infinite;
+}
+
+.status-icon.muted {
+    color: #ff3b30;
+}
+
+/* Боковая панель участников в режиме презентации */
+.sidebar-participants {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    grid-column: 2;
+    grid-row: 1 / -1;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+/* Реакции */
+.reactions-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.reaction-emoji {
+    position: absolute;
+    font-size: 48px;
+    animation: reactionFloat 3s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes reactionFloat {
+    0% {
+        transform: scale(0) translateY(0);
+        opacity: 1;
+    }
+    10% {
+        transform: scale(1.2) translateY(-20px);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1) translateY(-150px);
+        opacity: 0;
+    }
+}
+
+/* Панель быстрых реакций */
+.quick-reactions {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(45, 45, 48, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 50px;
+    padding: 12px 16px;
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid #404040;
+}
+
+.quick-reactions.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-10px);
+}
+
+.reaction-btn {
+    background: transparent;
     border: none;
-    font-size: 20px;
+    font-size: 24px;
+    padding: 8px;
+    border-radius: 50%;
     cursor: pointer;
     transition: all 0.2s ease;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.control-btn.mic {
-    background: #484849;
-    color: #ffffff;
+.reaction-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
 }
 
-.control-btn.mic:hover {
-    background: #5a5a5b;
-}
-
-.control-btn.camera {
-    background: #484849;
-    color: #ffffff;
-}
-
-.control-btn.camera:hover {
-    background: #5a5a5b;
-}
-
-.control-btn.screen {
-    background: #484849;
-    color: #ffffff;
-}
-
-.control-btn.screen:hover {
-    background: #5a5a5b;
-}
-
-.control-btn.audio {
-    background: #484849;
-    color: #ffffff;
-}
-
-.control-btn.audio:hover {
-    background: #5a5a5b;
-}
-
-.control-btn.active {
-    background: #0084ff;
-    color: #ffffff;
-}
-
-.control-btn.muted {
-    background: #ff3b30;
-    color: #ffffff;
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 /* Чат (боковая панель) */
@@ -230,15 +532,52 @@ body {
     background: #2d2d30;
 }
 
-.chat p {
-    padding: 8px 12px;
-    margin: 4px 0;
+/* Сообщения */
+.message {
+    margin-bottom: 16px;
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.message-avatar {
+    font-size: 16px;
+}
+
+.message-author {
+    font-size: 14px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.message-time {
+    font-size: 12px;
+    color: #8e8e93;
+}
+
+.message-text {
     background: #404040;
+    padding: 8px 12px;
     border-radius: 8px;
     font-size: 14px;
     line-height: 1.4;
     color: #ffffff;
     word-wrap: break-word;
+    margin-left: 24px;
+}
+
+.message.reaction .message-text {
+    background: transparent;
+    padding: 4px 8px;
+    font-size: 13px;
+    color: #8e8e93;
+    margin-left: 24px;
+    border-radius: 12px;
+    font-style: italic;
 }
 
 .chat-input {
@@ -284,6 +623,63 @@ body {
     background: #0056cc;
 }
 
+/* Нижняя панель управления */
+.controls {
+    background: #2d2d30;
+    border-top: 1px solid #404040;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    min-height: 80px;
+}
+
+.control-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.control-btn.mic, .control-btn.camera, .control-btn.screen, .control-btn.audio, .control-btn.reactions {
+    background: #484849;
+    color: #ffffff;
+}
+
+.control-btn:hover {
+    background: #5a5a5b;
+}
+
+.control-btn.active {
+    background: #0084ff;
+    color: #ffffff;
+}
+
+.control-btn.muted {
+    background: #ff3b30;
+    color: #ffffff;
+}
+
+.control-btn.mic.speaking::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 50%;
+    border: 2px solid #4CAF50;
+    animation: pulse 1.5s infinite;
+}
+
 /* Скрытые кнопки (старые) */
 #start-video, #stop-video, #share-screen, #stop-screen,
 #mute-audio, #unmute-audio, #mute-mic, #unmute-mic {
@@ -304,12 +700,33 @@ body {
     }
     
     .video-grid {
-        grid-template-columns: 1fr;
         padding: 8px;
+    }
+    
+    .video-grid.mode-presentation {
+        grid-template-columns: 1fr;
+        grid-template-rows: 2fr 1fr;
+    }
+    
+    .video-container.main-presenter {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    
+    .sidebar-participants {
+        grid-column: 1;
+        grid-row: 2;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        max-height: 200px;
     }
     
     .header {
         padding: 12px 16px;
+    }
+    
+    .user-profile {
+        flex-wrap: wrap;
+        gap: 8px;
     }
     
     .controls {
@@ -321,6 +738,18 @@ body {
         width: 44px;
         height: 44px;
         font-size: 18px;
+    }
+    
+    .quick-reactions {
+        bottom: 80px;
+        left: 20px;
+        right: 20px;
+        transform: none;
+        justify-content: center;
+    }
+    
+    .quick-reactions.show {
+        transform: translateY(-10px);
     }
 }
 
@@ -340,4 +769,21 @@ body {
 
 .chat::-webkit-scrollbar-thumb:hover {
     background: #8e8e93;
+}
+
+/* Адаптивность баннера */
+@media (max-width: 600px) {
+    .banner-content {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .banner-text {
+        font-size: 13px;
+    }
+    
+    .banner-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
 }

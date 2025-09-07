@@ -35,6 +35,14 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         }
         
+        .step {
+            display: none;
+        }
+        
+        .step.active {
+            display: block;
+        }
+        
         .logo {
             margin-bottom: 32px;
         }
@@ -47,6 +55,13 @@
             letter-spacing: -0.5px;
         }
         
+        h2 {
+            color: #ffffff;
+            margin-bottom: 16px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
         .subtitle {
             color: #8e8e93;
             margin-bottom: 40px;
@@ -55,8 +70,86 @@
             line-height: 1.5;
         }
         
-        .create-section {
-            margin-bottom: 40px;
+        .profile-section {
+            margin-bottom: 32px;
+        }
+        
+        .avatar-selection {
+            margin-bottom: 24px;
+        }
+        
+        .avatar-selection label {
+            display: block;
+            color: #ffffff;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .avatar-option {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px solid #606060;
+            background: #404040;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .avatar-option:hover {
+            border-color: #0084ff;
+            transform: scale(1.1);
+        }
+        
+        .avatar-option.selected {
+            border-color: #0084ff;
+            background: #0084ff20;
+            transform: scale(1.1);
+        }
+        
+        .name-input {
+            margin-bottom: 24px;
+        }
+        
+        .name-input label {
+            display: block;
+            color: #ffffff;
+            margin-bottom: 8px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            background: #404040;
+            border: 1px solid #606060;
+            color: #ffffff;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s ease;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #0084ff;
+            background: #484849;
+        }
+        
+        input[type="text"]::placeholder {
+            color: #8e8e93;
         }
         
         .btn {
@@ -75,13 +168,19 @@
             font-family: 'Inter', sans-serif;
         }
         
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             background: #0056cc;
             transform: translateY(-1px);
         }
         
-        .btn:active {
-            transform: translateY(0);
+        .btn:disabled {
+            background: #606060;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .create-section {
+            margin-bottom: 32px;
         }
         
         .divider {
@@ -108,39 +207,10 @@
             font-weight: 500;
         }
         
-        .join-section h3 {
-            color: #ffffff;
-            margin-bottom: 16px;
-            font-size: 18px;
-            font-weight: 600;
-        }
-        
         .input-group {
             display: flex;
             gap: 8px;
             margin-bottom: 16px;
-        }
-        
-        input[type="text"] {
-            flex: 1;
-            background: #404040;
-            border: 1px solid #606060;
-            color: #ffffff;
-            padding: 16px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-family: 'Inter', sans-serif;
-            transition: border-color 0.2s ease;
-        }
-        
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #0084ff;
-            background: #484849;
-        }
-        
-        input[type="text"]::placeholder {
-            color: #8e8e93;
         }
         
         .btn-secondary {
@@ -156,43 +226,18 @@
             transform: translateY(-1px);
         }
         
-        .features {
-            margin-top: 48px;
-            padding-top: 32px;
-            border-top: 1px solid #404040;
-        }
-        
-        .features h4 {
-            color: #ffffff;
-            margin-bottom: 16px;
-            font-size: 16px;
-            font-weight: 600;
-        }
-        
-        .feature-list {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            text-align: left;
-        }
-        
-        .feature-item {
+        .back-btn {
+            background: transparent;
+            border: 1px solid #606060;
             color: #8e8e93;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            margin-bottom: 24px;
+            padding: 12px 24px;
+            width: auto;
         }
         
-        .feature-icon {
-            width: 16px;
-            height: 16px;
-            background: #0084ff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
+        .back-btn:hover {
+            background: #404040;
+            color: #ffffff;
         }
         
         /* Адаптивность */
@@ -202,133 +247,152 @@
                 margin: 10px;
             }
             
-            h1 {
-                font-size: 28px;
+            .avatar-grid {
+                grid-template-columns: repeat(5, 1fr);
             }
             
-            .subtitle {
-                font-size: 15px;
-            }
-            
-            .input-group {
-                flex-direction: column;
-            }
-            
-            .btn-secondary {
-                min-width: auto;
-            }
-            
-            .feature-list {
-                grid-template-columns: 1fr;
+            .avatar-option {
+                width: 44px;
+                height: 44px;
+                font-size: 18px;
             }
         }
         
-        @media (max-width: 480px) {
-            body {
-                padding: 10px;
-            }
-            
-            .container {
-                padding: 24px 20px;
-            }
-            
-            h1 {
-                font-size: 24px;
-            }
-            
-            .btn {
-                padding: 14px 24px;
-                font-size: 15px;
-            }
-            
-            input[type="text"] {
-                padding: 14px;
-                font-size: 15px;
-            }
+        /* Анимация */
+        .step {
+            animation: fadeIn 0.3s ease forwards;
         }
         
-        /* Анимация появления */
-        .container {
-            animation: fadeInUp 0.6s ease forwards;
-        }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">
-            <h1>Chad Meet</h1>
-            <p class="subtitle">Простые и безопасные видеоконференции<br>Подключайтесь мгновенно, без регистрации</p>
-        </div>
-        
-        <div class="create-section">
-            <button class="btn" onclick="createRoom()">Создать новую встречу</button>
-        </div>
-        
-        <div class="divider">
-            <span>или</span>
-        </div>
-        
-        <div class="join-section">
-            <h3>Присоединиться к встрече</h3>
-            <div class="input-group">
-                <input type="text" id="roomId" placeholder="Введите идентификатор встречи">
-                <button class="btn btn-secondary" onclick="joinRoom()">Войти</button>
+        <!-- Шаг 1: Выбор профиля -->
+        <div id="step-profile" class="step active">
+            <div class="logo">
+                <h1>Chad Meet</h1>
+                <p class="subtitle">Сначала настройте свой профиль</p>
             </div>
+            
+            <div class="profile-section">
+                <div class="avatar-selection">
+                    <label>Выберите аватарку:</label>
+                    <div class="avatar-grid">
+                        <div class="avatar-option" data-emoji="😊" onclick="selectAvatar('😊')">😊</div>
+                        <div class="avatar-option" data-emoji="😎" onclick="selectAvatar('😎')">😎</div>
+                        <div class="avatar-option" data-emoji="🤔" onclick="selectAvatar('🤔')">🤔</div>
+                        <div class="avatar-option" data-emoji="😄" onclick="selectAvatar('😄')">😄</div>
+                        <div class="avatar-option" data-emoji="🚀" onclick="selectAvatar('🚀')">🚀</div>
+                        <div class="avatar-option" data-emoji="🎯" onclick="selectAvatar('🎯')">🎯</div>
+                        <div class="avatar-option" data-emoji="💻" onclick="selectAvatar('💻')">💻</div>
+                        <div class="avatar-option" data-emoji="⚡" onclick="selectAvatar('⚡')">⚡</div>
+                        <div class="avatar-option" data-emoji="🔥" onclick="selectAvatar('🔥')">🔥</div>
+                        <div class="avatar-option" data-emoji="👑" onclick="selectAvatar('👑')">👑</div>
+                        <div class="avatar-option" data-emoji="🌟" onclick="selectAvatar('🌟')">🌟</div>
+                        <div class="avatar-option" data-emoji="🎉" onclick="selectAvatar('🎉')">🎉</div>
+                    </div>
+                </div>
+                
+                <div class="name-input">
+                    <label>Ваше имя:</label>
+                    <input type="text" id="userName" placeholder="Введите ваше имя" maxlength="20">
+                </div>
+            </div>
+            
+            <button class="btn" id="continueBtn" onclick="goToMeeting()" disabled>Продолжить</button>
         </div>
         
-        <div class="features">
-            <h4>Возможности Chad Meet</h4>
-            <div class="feature-list">
-                <div class="feature-item">
-                    <div class="feature-icon">📹</div>
-                    <span>HD видеосвязь</span>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">🖥</div>
-                    <span>Демонстрация экрана</span>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">💬</div>
-                    <span>Текстовый чат</span>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-icon">🔒</div>
-                    <span>Безопасное соединение</span>
+        <!-- Шаг 2: Создание/вход в комнату -->
+        <div id="step-meeting" class="step">
+            <button class="btn back-btn" onclick="goBackToProfile()">← Назад</button>
+            
+            <div class="logo">
+                <h2>Привет, <span id="displayName"></span> <span id="displayAvatar"></span></h2>
+                <p class="subtitle">Создайте встречу или присоединитесь к существующей</p>
+            </div>
+            
+            <div class="create-section">
+                <button class="btn" onclick="createRoom()">Создать новую встречу</button>
+            </div>
+            
+            <div class="divider">
+                <span>или</span>
+            </div>
+            
+            <div class="join-section">
+                <div class="input-group">
+                    <input type="text" id="roomId" placeholder="Введите идентификатор встречи">
+                    <button class="btn btn-secondary" onclick="joinRoom()">Войти</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        let selectedAvatar = '';
+        let userName = '';
+        
+        function selectAvatar(emoji) {
+            // Убираем выделение со всех аватарок
+            document.querySelectorAll('.avatar-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Выделяем выбранную
+            event.target.classList.add('selected');
+            selectedAvatar = emoji;
+            
+            checkProfileComplete();
+        }
+        
+        function checkProfileComplete() {
+            const nameInput = document.getElementById('userName');
+            const continueBtn = document.getElementById('continueBtn');
+            
+            userName = nameInput.value.trim();
+            
+            if (userName && selectedAvatar) {
+                continueBtn.disabled = false;
+            } else {
+                continueBtn.disabled = true;
+            }
+        }
+        
+        function goToMeeting() {
+            document.getElementById('step-profile').classList.remove('active');
+            document.getElementById('step-meeting').classList.add('active');
+            
+            document.getElementById('displayName').textContent = userName;
+            document.getElementById('displayAvatar').textContent = selectedAvatar;
+            
+            // Сохраняем в localStorage для передачи в комнату
+            localStorage.setItem('userProfile', JSON.stringify({
+                name: userName,
+                avatar: selectedAvatar
+            }));
+        }
+        
+        function goBackToProfile() {
+            document.getElementById('step-meeting').classList.remove('active');
+            document.getElementById('step-profile').classList.add('active');
+        }
+        
         function createRoom() {
-            console.log("Создание новой комнаты...");
             const roomId = generateRoomId();
-            console.log("Сгенерированный ID:", roomId);
             window.location.href = `/room/${roomId}`;
-            return false;
         }
         
         function joinRoom() {
-            console.log("Попытка войти в комнату...");
             const roomId = document.getElementById('roomId').value.trim();
-            console.log("Введенный ID:", roomId);
             if (roomId) {
                 window.location.href = `/room/${roomId}`;
             } else {
                 alert('Пожалуйста, введите идентификатор встречи');
             }
-            return false;
         }
         
         function generateRoomId() {
@@ -339,14 +403,21 @@
             }
             return result;
         }
-
-        // Обработка Enter в поле ввода
+        
+        // Обработчики событий
+        document.getElementById('userName').addEventListener('input', checkProfileComplete);
+        document.getElementById('userName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('continueBtn').disabled) {
+                goToMeeting();
+            }
+        });
+        
         document.getElementById('roomId').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 joinRoom();
             }
         });
-
+        
         console.log("Chad Meet загружен!");
     </script>
 </body>
