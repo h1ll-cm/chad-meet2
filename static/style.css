@@ -1,0 +1,343 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1a1a1a;
+    color: #ffffff;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Верхняя панель */
+.header {
+    background: #2d2d30;
+    border-bottom: 1px solid #404040;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 64px;
+}
+
+.room-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.room-info h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.participants-count {
+    font-size: 14px;
+    color: #8e8e93;
+    font-weight: 400;
+}
+
+#room-id {
+    font-family: 'Inter', monospace;
+    font-size: 12px;
+    color: #8e8e93;
+    background: #404040;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+}
+
+#copy-link {
+    background: transparent;
+    border: 1px solid #606060;
+    color: #ffffff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#copy-link:hover {
+    background: #404040;
+    border-color: #8e8e93;
+}
+
+/* Основная область */
+.main-content {
+    flex: 1;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Видео область */
+.video-area {
+    flex: 1;
+    background: #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.video-grid {
+    display: grid;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+    padding: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-auto-rows: minmax(240px, 1fr);
+}
+
+.video-container {
+    background: #2d2d30;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.video-grid video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000000;
+}
+
+.video-placeholder {
+    width: 80px;
+    height: 80px;
+    background: #606060;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Нижняя панель управления */
+.controls {
+    background: #2d2d30;
+    border-top: 1px solid #404040;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    min-height: 80px;
+}
+
+.control-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-btn.mic {
+    background: #484849;
+    color: #ffffff;
+}
+
+.control-btn.mic:hover {
+    background: #5a5a5b;
+}
+
+.control-btn.camera {
+    background: #484849;
+    color: #ffffff;
+}
+
+.control-btn.camera:hover {
+    background: #5a5a5b;
+}
+
+.control-btn.screen {
+    background: #484849;
+    color: #ffffff;
+}
+
+.control-btn.screen:hover {
+    background: #5a5a5b;
+}
+
+.control-btn.audio {
+    background: #484849;
+    color: #ffffff;
+}
+
+.control-btn.audio:hover {
+    background: #5a5a5b;
+}
+
+.control-btn.active {
+    background: #0084ff;
+    color: #ffffff;
+}
+
+.control-btn.muted {
+    background: #ff3b30;
+    color: #ffffff;
+}
+
+/* Чат (боковая панель) */
+.chat-container {
+    width: 320px;
+    background: #2d2d30;
+    border-left: 1px solid #404040;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.chat-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #404040;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    background: #2d2d30;
+}
+
+.chat p {
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: #404040;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #ffffff;
+    word-wrap: break-word;
+}
+
+.chat-input {
+    padding: 16px 20px;
+    border-top: 1px solid #404040;
+    display: flex;
+    gap: 8px;
+}
+
+#message-input {
+    flex: 1;
+    background: #404040;
+    border: 1px solid #606060;
+    color: #ffffff;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+}
+
+#message-input:focus {
+    outline: none;
+    border-color: #0084ff;
+}
+
+#message-input::placeholder {
+    color: #8e8e93;
+}
+
+#send-message {
+    background: #0084ff;
+    border: none;
+    color: #ffffff;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+#send-message:hover {
+    background: #0056cc;
+}
+
+/* Скрытые кнопки (старые) */
+#start-video, #stop-video, #share-screen, #stop-screen,
+#mute-audio, #unmute-audio, #mute-mic, #unmute-mic {
+    display: none;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+    }
+    
+    .chat-container {
+        width: 100%;
+        height: 300px;
+        border-left: none;
+        border-top: 1px solid #404040;
+    }
+    
+    .video-grid {
+        grid-template-columns: 1fr;
+        padding: 8px;
+    }
+    
+    .header {
+        padding: 12px 16px;
+    }
+    
+    .controls {
+        padding: 12px 16px;
+        gap: 8px;
+    }
+    
+    .control-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+    }
+}
+
+/* Скроллбар для чата */
+.chat::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat::-webkit-scrollbar-thumb {
+    background: #606060;
+    border-radius: 3px;
+}
+
+.chat::-webkit-scrollbar-thumb:hover {
+    background: #8e8e93;
+}

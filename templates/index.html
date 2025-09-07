@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chad Meeting — 1 участник</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Верхняя панель -->
+        <div class="header">
+            <div class="room-info">
+                <h2>Chad Meeting</h2>
+                <span class="participants-count">— 1 участник</span>
+                <span id="room-id">{{ room_id }}</span>
+            </div>
+            <button id="copy-link">Скопировать</button>
+        </div>
+
+        <!-- Основная область -->
+        <div class="main-content">
+            <!-- Видео область -->
+            <div class="video-area">
+                <div id="video-grid" class="video-grid">
+                    <!-- Заглушка когда нет видео -->
+                    <div class="video-container" id="placeholder">
+                        <div class="video-placeholder">Вы</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Чат -->
+            <div class="chat-container">
+                <div class="chat-header">Сообщения</div>
+                <div id="chat" class="chat"></div>
+                <div class="chat-input">
+                    <input type="text" id="message-input" placeholder="Отправить сообщение" onkeypress="if(event.key==='Enter') document.getElementById('send-message').click();">
+                    <button id="send-message">Отправить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Нижняя панель управления -->
+        <div class="controls">
+            <button id="toggle-mic" class="control-btn mic" title="Микрофон">🎤</button>
+            <button id="toggle-camera" class="control-btn camera" title="Камера">📹</button>
+            <button id="toggle-screen" class="control-btn screen" title="Демонстрация экрана">🖥</button>
+            <button id="toggle-audio" class="control-btn audio" title="Звук">🔊</button>
+        </div>
+    </div>
+
+    <!-- Скрытые старые кнопки для совместимости -->
+    <button id="start-video" style="display: none;"></button>
+    <button id="stop-video" style="display: none;"></button>
+    <button id="share-screen" style="display: none;"></button>
+    <button id="stop-screen" style="display: none;"></button>
+    <button id="mute-audio" style="display: none;"></button>
+    <button id="unmute-audio" style="display: none;"></button>
+    <button id="mute-mic" style="display: none;"></button>
+    <button id="unmute-mic" style="display: none;"></button>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const ROOM_ID = "{{ room_id }}";
+        
+        // Новые кнопки управления
+        let micEnabled = true;
+        let cameraEnabled = false;
+        let screenEnabled = false;
+        let audioEnabled = true;
+
+        // Привязка к старым кнопкам для совместимости
+        document.getElementById('toggle-mic').addEventListener('click', () => {
+            if (micEnabled) {
+                document.getElementById('mute-mic').click();
+            } else {
+                document.getElementById('unmute-mic').click();
+            }
+            micEnabled = !micEnabled;
+            updateButtonState('toggle-mic', micEnabled);
+        });
+
+        document.getElementById('toggle-camera').addEventListener('click', () => {
+            if (cameraEnabled) {
+                document.getElementById('stop-video').click();
+                document.getElementById('placeholder').style.display = 'flex';
+            } else {
+                document.getElementById('start-video').click();
+                document.getElementById('placeholder').style.display = 'none';
+            }
+            cameraEnabled = !cameraEnabled;
+            updateButtonState('toggle-camera', cameraEnabled);
+        });
+
+        document.getElementById('toggle-screen').addEventListener('click', () => {
+            if (screenEnabled) {
+                document.getElementById('stop-screen').click();
+            } else {
+                document.getElementById('share-screen').click();
+            }
+            screenEnabled = !screenEnabled;
+            updateButtonState('toggle-screen', screenEnabled);
+        });
+
+        document.getElementById('toggle-audio').addEventListener('click', () => {
+            if (audioEnabled) {
+                document.getElementById('mute-audio').click();
+            } else {
+                document.getElementById('unmute-audio').click();
+            }
+            audioEnabled = !audioEnabled;
+            updateButtonState('toggle-audio', audioEnabled);
+        });
+
+        function updateButtonState(buttonId, isActive) {
+            const btn = document.getElementById(buttonId);
+            if (isActive) {
+                btn.classList.add('active');
+                btn.classList.remove('muted');
+            } else {
+                btn.classList.remove('active');
+                if (buttonId === 'toggle-mic' || buttonId === 'toggle-audio') {
+                    btn.classList.add('muted');
+                }
+            }
+        }
+
+        // Копирование ссылки
+        document.getElementById('copy-link').addEventListener('click', () => {
+            const link = window.location.href;
+            navigator.clipboard.writeText(link).then(() => {
+                const btn = document.getElementById('copy-link');
+                const originalText = btn.textContent;
+                btn.textContent = 'Скопировано!';
+                setTimeout(() => btn.textContent = originalText, 2000);
+            });
+        });
+
+        console.log(`Подключение к комнате: ${ROOM_ID}`);
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
